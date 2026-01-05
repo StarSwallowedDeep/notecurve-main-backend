@@ -12,6 +12,8 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.notecurve.notefile.dto.NoteFileDTO;
@@ -20,7 +22,10 @@ import com.notecurve.note.domain.Note;
 import com.notecurve.notefile.repository.NoteFileRepository;
 import com.notecurve.note.repository.NoteRepository;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class NoteFileService {
 
     @Value("${note.upload-dir}")
@@ -28,11 +33,6 @@ public class NoteFileService {
 
     private final NoteFileRepository fileRepository;
     private final NoteRepository noteRepository;
-
-    public NoteFileService(NoteFileRepository fileRepository, NoteRepository noteRepository) {
-        this.fileRepository = fileRepository;
-        this.noteRepository = noteRepository;
-    }
 
     // 파일 업로드
     @Transactional
@@ -55,17 +55,26 @@ public class NoteFileService {
         String storedFileName = UUID.randomUUID() + fileExtension;
 
         Path targetLocation = userFolderPath.resolve(storedFileName);
-        Files.copy(file.getInputStream(), targetLocation);
 
-        NoteFile newFile = new NoteFile();
-        newFile.setOriginalName(originalFileName);
-        newFile.setStoredName(storedFileName);
-        newFile.setFilePath(userFolder);
-        newFile.setFileType(file.getContentType());
-        newFile.setFileSize(file.getSize());
-        newFile.setNote(note);
+        try {
+            // 디스크에 파일 복사
+            Files.copy(file.getInputStream(), targetLocation);
 
-        return fileRepository.save(newFile);
+            // DB에 기록
+            NoteFile newFile = new NoteFile();
+            newFile.setOriginalName(originalFileName);
+            newFile.setStoredName(storedFileName);
+            newFile.setFilePath(userFolder);
+            newFile.setFileType(file.getContentType());
+            newFile.setFileSize(file.getSize());
+            newFile.setNote(note);
+
+            return fileRepository.save(newFile);
+        } catch (Exception e) {
+            // DB 저장 실패하면 방금 올린 파일 삭제
+            Files.deleteIfExists(targetLocation);
+            throw e;
+        }
     }
 
     // 파일 조회 (노트 기준)
@@ -98,7 +107,9 @@ public class NoteFileService {
     }
 
     // 파일 다운로드
-    public NoteFile downloadFile(Long fileId, Long userId) {
+    public record DownloadFileResult(Resource resource, String originalName) {}
+
+    public DownloadFileResult downloadFileWithName(Long fileId, Long userId) {
         NoteFile file = fileRepository.findWithNoteAndUserById(fileId)
                 .orElseThrow(() -> new RuntimeException("파일을 찾을 수 없습니다."));
 
@@ -106,7 +117,15 @@ public class NoteFileService {
             throw new RuntimeException("해당 파일에 접근할 권한이 없습니다.");
         }
 
-        return file;
+        Path path = Paths.get(uploadDir)
+                .resolve(file.getFilePath())
+                .resolve(file.getStoredName());
+
+        if (!Files.exists(path)) {
+            throw new RuntimeException("파일이 존재하지 않습니다.");
+        }
+
+        return new DownloadFileResult(new FileSystemResource(path.toFile()), file.getOriginalName());
     }
 
     // 파일 삭제 (DB + 실제 파일)
@@ -121,17 +140,17 @@ public class NoteFileService {
 
         fileRepository.delete(file);
 
-        // 실제 파일 삭제
-        deletePhysicalFile(file);
-    }
-
-    // 실제 파일 삭제
-    public void deletePhysicalFile(NoteFile file) throws IOException {
-        Path filePath = Paths.get(uploadDir)
-                .resolve(file.getFilePath())
-                .resolve(file.getStoredName());
-
-        Files.deleteIfExists(filePath);
+        // 트랜잭션 커밋 후 실제 파일 삭제
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    deletePhysicalFile(file);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
     // 이미지 서빙
@@ -151,8 +170,26 @@ public class NoteFileService {
         return new FileSystemResource(filePath.toFile());
     }
 
-    // uploadDir 경로 반환
-    public String getUploadDir() {
-        return uploadDir;
+    @Transactional
+    public void uploadFiles(Long noteId, MultipartFile[] files, Long userId) throws IOException {
+        for (MultipartFile file : files) {
+            uploadFile(noteId, file, userId);
+        }
+    }
+
+    @Transactional
+    public void deleteFiles(List<Long> fileIds, Long userId) throws IOException {
+        for (Long fileId : fileIds) {
+            deleteFile(fileId, userId);
+        }
+    }
+
+    // 실제 파일 삭제
+    public void deletePhysicalFile(NoteFile file) throws IOException {
+        Path filePath = Paths.get(uploadDir)
+                .resolve(file.getFilePath())
+                .resolve(file.getStoredName());
+
+        Files.deleteIfExists(filePath);
     }
 }
