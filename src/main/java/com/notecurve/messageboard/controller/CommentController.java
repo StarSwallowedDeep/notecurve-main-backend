@@ -1,41 +1,41 @@
 package com.notecurve.messageboard.controller;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.notecurve.messageboard.dto.CommentRequest;
 import com.notecurve.messageboard.dto.CommentDTO;
 import com.notecurve.messageboard.service.CommentService;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api/comments")
+@RequiredArgsConstructor
 public class CommentController {
 
-    @Autowired
-    private CommentService commentService;
+    private final CommentService commentService;
 
     @PostMapping("/message-board/{messageBoardId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CommentDTO> createComment(
-            @PathVariable("messageBoardId") Long messageBoardId, 
-            @RequestBody CommentRequest commentRequest) {
+            @PathVariable Long messageBoardId, 
+            @Valid @RequestBody CommentRequest commentRequest) {
 
         CommentDTO commentDTO = commentService.createComment(messageBoardId, commentRequest.getContent());
         return ResponseEntity.ok(commentDTO);
     }
 
     @GetMapping("/message-board/{messageBoardId}")
-    @PreAuthorize("permitAll()")
-    public ResponseEntity<List<CommentDTO>> getCommentsByMessageBoard(@PathVariable("messageBoardId") Long messageBoardId) {
+    public ResponseEntity<List<CommentDTO>> getCommentsByMessageBoard(@PathVariable Long messageBoardId) {
         List<CommentDTO> commentDTOs = commentService.getCommentsByMessageBoard(messageBoardId);
         return ResponseEntity.ok(commentDTOs);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteComment(@PathVariable("id") Long id) {
+    public ResponseEntity<Void> deleteComment(@PathVariable Long id) {
         boolean isDeleted = commentService.deleteComment(id);
         return isDeleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
