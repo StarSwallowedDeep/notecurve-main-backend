@@ -1,11 +1,13 @@
 package com.notecurve.messageboard.domain;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.notecurve.user.domain.User;
-import com.notecurve.user.dto.UserDTO;
 import jakarta.persistence.*;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import lombok.Getter;
 import lombok.Setter;
+
+import com.notecurve.user.domain.User;
 
 @Entity
 @Getter
@@ -26,8 +28,4 @@ public class Comment {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
-
-    public UserDTO getUserDTO() {
-        return new UserDTO(user.getName());
-    }
 }
