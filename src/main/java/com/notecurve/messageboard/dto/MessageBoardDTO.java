@@ -15,5 +15,5 @@ public class MessageBoardDTO {
     private String title;
     private String createdAt;
     private List<CommentDTO> comments;
-    private String userId;
+    private String userName;
 }
