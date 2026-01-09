@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.notecurve.auth.security.UserDetailsImpl;
 import com.notecurve.messageboard.domain.MessageBoard;
 import com.notecurve.messageboard.dto.MessageBoardDTO;
 import com.notecurve.messageboard.service.CommentService;
@@ -22,10 +24,21 @@ public class MessageBoardController {
     private final CommentService commentService;
 
     @PostMapping
-    public ResponseEntity<MessageBoardDTO> createMessageBoard(@RequestBody MessageBoardDTO messageBoardDto) {
-        MessageBoard messageBoard = messageBoardService.createMessageBoard(messageBoardDto.getTitle());
-        MessageBoardDTO responseDto = convertToDTO(messageBoard, false);
+    public ResponseEntity<MessageBoardDTO> createMessageBoard(
+            @RequestBody MessageBoardDTO messageBoardDto,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        MessageBoard messageBoard = messageBoardService.createMessageBoard(
+                messageBoardDto.getTitle(),
+                userDetails.getUser()
+        );
         
+        MessageBoardDTO responseDto = convertToDTO(
+            messageBoard,
+            false,
+            userDetails.getUser().getId()
+        );
+
         //return ResponseEntity.ok(messageBoard);
         return ResponseEntity.status(201).body(responseDto);
     }
@@ -35,19 +48,24 @@ public class MessageBoardController {
     public ResponseEntity<List<MessageBoardDTO>> getAllMessageBoards() {
         List<MessageBoard> messageBoards = messageBoardService.getAllMessageBoards();
         List<MessageBoardDTO> messageBoardDTOs = messageBoards.stream()
-            // 댓글은 제외하고 변환
-            .map(messageBoard -> convertToDTO(messageBoard, false))
+            .map(messageBoard -> convertToDTO(messageBoard, false, null))
             .collect(Collectors.toList());
         return ResponseEntity.ok(messageBoardDTOs);
     }
 
     // 게시판 조회
     @GetMapping("/{id}")
-    public ResponseEntity<MessageBoardDTO> getMessageBoard(@PathVariable Long id) {
+    public ResponseEntity<MessageBoardDTO> getMessageBoard(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
         MessageBoard messageBoard = messageBoardService.getMessageBoard(id);
+
         if (messageBoard != null) {
-            // 게시판 조회 시, 댓글 포함 여부를 true로 설정
-            MessageBoardDTO messageBoardDTO = convertToDTO(messageBoard, true); 
+            Long currentUserId = (userDetails != null) ? userDetails.getUser().getId() : null;
+
+            // 댓글 포함 여부 true, 로그인 시 userId 전달
+            MessageBoardDTO messageBoardDTO = convertToDTO(messageBoard, true, currentUserId);
             return ResponseEntity.ok(messageBoardDTO);
         }
         return ResponseEntity.notFound().build();
@@ -55,20 +73,27 @@ public class MessageBoardController {
 
     // 게시판 삭제
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteMessageBoard(@PathVariable Long id) {
-        boolean isDeleted = messageBoardService.deleteMessageBoard(id);
+    public ResponseEntity<Void> deleteMessageBoard(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        boolean isDeleted = messageBoardService.deleteMessageBoard(
+                id,
+                userDetails.getUser()
+        );
+
         if (isDeleted) {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
     }
 
-    private MessageBoardDTO convertToDTO(MessageBoard messageBoard, boolean includeComments) {
+    private MessageBoardDTO convertToDTO(MessageBoard messageBoard, boolean includeComments, Long userId) {
         return new MessageBoardDTO(
             messageBoard.getId(),
             messageBoard.getTitle(),
             messageBoard.getFormattedCreatedAt(),
-            includeComments ? commentService.getCommentsByMessageBoard(messageBoard.getId()) : null,
+            includeComments ? commentService.getCommentsByMessageBoard(messageBoard.getId(), userId) : null,
             messageBoard.getUser().getName()
         );
     }
