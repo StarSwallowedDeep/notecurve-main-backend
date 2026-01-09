@@ -3,31 +3,21 @@ package com.notecurve.messageboard.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.notecurve.messageboard.domain.MessageBoard;
 import com.notecurve.messageboard.repository.MessageBoardRepository;
 import com.notecurve.user.domain.User;
-import com.notecurve.user.repository.UserRepository; 
-import com.notecurve.auth.security.UserDetailsImpl;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class MessageBoardService {
 
     private final MessageBoardRepository messageBoardRepository;
-    private final UserRepository userRepository;
-
-    // 생성자 주입
-    public MessageBoardService(MessageBoardRepository messageBoardRepository, UserRepository userRepository) {
-        this.messageBoardRepository = messageBoardRepository;
-        this.userRepository = userRepository;
-    }
 
     // 게시판 생성
-    public MessageBoard createMessageBoard(String title) {
-        String username = getCurrentUsername();
-        User user = userRepository.findByLoginIdOrThrow(username);
-
+    public MessageBoard createMessageBoard(String title, User user) {
         MessageBoard messageBoard = new MessageBoard();
         messageBoard.setTitle(title);
         messageBoard.setUser(user);
@@ -46,26 +36,12 @@ public class MessageBoardService {
     }
 
     // 게시판 삭제
-    public boolean deleteMessageBoard(Long id) {
+    public boolean deleteMessageBoard(Long id, User user) {
         MessageBoard messageBoard = messageBoardRepository.findById(id).orElse(null);
-        if (messageBoard != null) {
-            String currentUsername = getCurrentUsername();
-            User currentUser = userRepository.findByLoginIdOrThrow(currentUsername);
-
-            if (messageBoard.getUser().equals(currentUser)) {
-                messageBoardRepository.deleteById(id);
-                return true;
-            }
+        if (messageBoard != null && messageBoard.getUser().getId().equals(user.getId())) {
+            messageBoardRepository.deleteById(id);
+            return true;
         }
         return false;
-    }
-
-    // 현재 로그인한 사용자의 username을 반환하는 메소드
-    private String getCurrentUsername() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetailsImpl) {
-            return ((UserDetailsImpl) principal).getUsername();
-        }
-        throw new IllegalStateException("로그인된 사용자가 없습니다.");
     }
 }
