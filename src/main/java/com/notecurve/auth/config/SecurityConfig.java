@@ -43,7 +43,7 @@ public class SecurityConfig {
         config.setAllowCredentials(true);
         config.setAllowedOriginPatterns(List.of(
                 //"http://localhost:5173",
-                "http://notecurve.com"
+                "https://notecurve.com"
         ));
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
