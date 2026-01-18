@@ -72,7 +72,7 @@ public class AuthController {
     private ResponseCookie createTokenCookie(String token, long maxAge) {
         return ResponseCookie.from("token", token)
                 .httpOnly(true)
-                .secure(false) // 운영 환경에서는 true
+                .secure(true) // 운영 환경에서는 true
                 .path("/")
                 .maxAge(maxAge)
                 .sameSite("Strict")
