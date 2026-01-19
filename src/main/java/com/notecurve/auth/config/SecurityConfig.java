@@ -50,6 +50,7 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/mcp/**", config);
 
         return source;
     }
@@ -66,6 +67,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/users/register").permitAll()
                 .requestMatchers("/api/images/**").permitAll()
+                .requestMatchers("/mcp/**").permitAll()
                 // GET 요청은 모두 허용
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/message-boards/**").permitAll()
