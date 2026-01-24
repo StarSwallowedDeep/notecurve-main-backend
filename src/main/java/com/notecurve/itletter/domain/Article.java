@@ -25,6 +25,8 @@ public class Article {
 
     private String source;
 
+    private String category;
+
     private LocalDateTime date;
 
     @PrePersist
