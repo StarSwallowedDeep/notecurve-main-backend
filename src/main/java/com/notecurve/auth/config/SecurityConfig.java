@@ -67,6 +67,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/users/register").permitAll()
                 .requestMatchers("/api/images/**").permitAll()
+                .requestMatchers("/api/articles/**").permitAll()
                 .requestMatchers("/mcp/**").permitAll()
                 // GET 요청은 모두 허용
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
