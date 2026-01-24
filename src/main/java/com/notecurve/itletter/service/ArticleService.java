@@ -21,6 +21,7 @@ public class ArticleService {
                 .title(articleDTO.getTitle())
                 .content(articleDTO.getContent())
                 .source(articleDTO.getSource())
+                .category(articleDTO.getCategory())
                 .date(articleDTO.getDate())
                 .build();
 
@@ -43,6 +44,7 @@ public class ArticleService {
                 article.getTitle(),
                 article.getContent(),
                 article.getSource(),
+                article.getCategory(),
                 article.getDate()
         );
     }
