@@ -38,6 +38,12 @@ public class ArticleService {
         return repository.findById(id).map(this::convertToDTO);
     }
 
+    public Optional<ArticleDTO> getLatestArticleByCategory(String category) {
+        return repository
+                .findTopByCategoryOrderByIdDesc(category)
+                .map(this::convertToDTO);
+    }
+
     private ArticleDTO convertToDTO(Article article) {
         return new ArticleDTO(
                 article.getId(),
