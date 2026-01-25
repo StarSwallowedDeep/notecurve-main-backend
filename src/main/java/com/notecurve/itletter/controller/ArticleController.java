@@ -35,4 +35,13 @@ public class ArticleController {
                 .map(articleDTO -> new ResponseEntity<>(articleDTO, HttpStatus.OK))
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
+
+    @GetMapping("/category/{category}/latest")
+    public ResponseEntity<ArticleDTO> getLatestArticleByCategory(
+            @PathVariable String category) {
+
+        return service.getLatestArticleByCategory(category)
+                .map(articleDTO -> new ResponseEntity<>(articleDTO, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
 }
