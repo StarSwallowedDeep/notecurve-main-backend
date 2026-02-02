@@ -13,7 +13,6 @@ public class MCPPostDto {
     private Long id;
     private String title;
     private String subtitle;
-    private String category;
     private String content;
     private LocalDate date;
 }
