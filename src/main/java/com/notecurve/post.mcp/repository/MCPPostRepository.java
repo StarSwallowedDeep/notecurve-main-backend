@@ -10,8 +10,8 @@ import java.util.List;
 
 public interface MCPPostRepository extends JpaRepository<Post, Long> {
 
-    @Query("SELECT p FROM Post p WHERE LOWER(p.category) = LOWER(:category) ORDER BY p.date DESC")
-    List<Post> findRecentPostsByCategory(
+    @Query("SELECT p FROM Post p WHERE (:category IS NULL OR LOWER(p.category) = LOWER(:category)) ORDER BY p.date DESC")
+    List<Post> findPostsByCategory(
             @Param("category") String category,
             Pageable pageable
     );
