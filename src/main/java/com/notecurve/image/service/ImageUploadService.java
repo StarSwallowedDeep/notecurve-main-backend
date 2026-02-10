@@ -12,7 +12,9 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImageUploadService {
 
     private final Path uploadDir;
-    private final List<String> allowedExtensions = List.of(".jpg", ".jpeg", ".png", ".gif");
+    private final List<String> allowedExtensions = List.of(
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".tiff", ".tif", ".ico"
+    );
 
     public ImageUploadService(@Value("${file.upload-dir}") String uploadDirStr) throws IOException {
         this.uploadDir = Paths.get(uploadDirStr).toAbsolutePath().normalize();
