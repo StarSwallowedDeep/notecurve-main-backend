@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 public class ImageServeService {
 
     private static final Logger LOGGER = Logger.getLogger(ImageServeService.class.getName());
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpeg", "jpg", "gif");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+        "jpg", "jpeg", "png", "gif", "webp", "tiff", "tif", "ico"
+    );
 
     @Value("${file.upload-dir}")
     private Path uploadDir;
