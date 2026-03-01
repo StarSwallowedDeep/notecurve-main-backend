@@ -51,4 +51,15 @@ public class ImageUploadService {
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
         return filename;
     }
+
+    // 파일 삭제 메서드
+    public void deleteFile(String imageUrl) {
+        String filename = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+        Path filePath = uploadDir.resolve(filename);
+        try {
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            System.err.println("파일 삭제 실패: " + filePath);
+        }
+    }
 }
