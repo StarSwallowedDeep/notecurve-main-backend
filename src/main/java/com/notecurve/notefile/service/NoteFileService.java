@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -158,7 +159,7 @@ public class NoteFileService {
         Path userFolderPath = Paths.get(uploadDir)
                 .resolve("notes_" + userId);
 
-        NoteFile file = fileRepository.findByOriginalNameAndNote_UserId(requestedFileName, userId)
+        NoteFile file = fileRepository.findByStoredNameAndNote_UserId(requestedFileName, userId)
                 .orElseThrow(() -> new RuntimeException("파일을 찾을 수 없습니다."));
 
         Path filePath = userFolderPath.resolve(file.getStoredName());
@@ -184,6 +185,19 @@ public class NoteFileService {
         }
     }
 
+    // 이미지 파일 삭제
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void deleteFileByStoredName(String storedName) {
+        fileRepository.findByStoredName(storedName).ifPresent(file -> {
+            try {
+                fileRepository.delete(file);
+                deletePhysicalFile(file);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     // 실제 파일 삭제
     public void deletePhysicalFile(NoteFile file) throws IOException {
         Path filePath = Paths.get(uploadDir)
@@ -191,5 +205,16 @@ public class NoteFileService {
                 .resolve(file.getStoredName());
 
         Files.deleteIfExists(filePath);
+    }
+
+    // UUID 파일명으로 URL 생성
+    @Transactional
+    public List<String> uploadFilesWithUrls(Long noteId, MultipartFile[] files, Long userId) throws IOException {
+        List<String> urls = new ArrayList<>();
+        for (MultipartFile file : files) {
+            NoteFile saved = uploadFile(noteId, file, userId);
+            urls.add("/api/files/images/" + saved.getStoredName());
+        }
+        return urls;
     }
 }
