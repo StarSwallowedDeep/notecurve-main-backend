@@ -21,5 +21,7 @@ public interface NoteFileRepository extends JpaRepository<NoteFile, Long> {
 
     // 파일 이름으로 조회 (이미지 서빙용)
     @EntityGraph(attributePaths = {"note", "note.user"})
-    Optional<NoteFile> findByOriginalNameAndNote_UserId(String originalName, Long userId);
+    Optional<NoteFile> findByStoredNameAndNote_UserId(String storedName, Long userId);
+
+    Optional<NoteFile> findByStoredName(String storedName);
 }
