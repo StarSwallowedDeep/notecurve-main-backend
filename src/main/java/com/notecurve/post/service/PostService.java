@@ -7,7 +7,8 @@ import com.notecurve.post.dto.PostResponseDto;
 import com.notecurve.post.repository.PostRepository;
 import com.notecurve.user.domain.User;
 import com.notecurve.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import com.notecurve.image.service.ImageUploadService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +26,8 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
 @RequiredArgsConstructor
 public class PostService {
@@ -34,6 +37,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final ImageUploadService imageUploadService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -42,26 +46,37 @@ public class PostService {
 
     @Transactional
     public PostResponseDto savePost(PostRequestDto postRequestDto, Long userId) throws IOException {
-        User user = getUserOrThrow(userId);
+        try {
+            User user = getUserOrThrow(userId);
 
-        String thumbnailUrl = postRequestDto.getThumbnail();
-        if (thumbnailUrl != null && !thumbnailUrl.isBlank()) validateImageExtension(thumbnailUrl);
+            String thumbnailUrl = postRequestDto.getThumbnail();
+            if (thumbnailUrl != null && !thumbnailUrl.isBlank()) validateImageExtension(thumbnailUrl);
 
-        Post post = Post.builder()
-                .title(postRequestDto.getTitle())
-                .subtitle(postRequestDto.getSubtitle())
-                .category(postRequestDto.getCategory())
-                .content(postRequestDto.getContent())
-                .thumbnailImageUrl(thumbnailUrl)
-                .date(LocalDate.now())
-                .user(user)
-                .build();
+            Post post = Post.builder()
+                    .title(postRequestDto.getTitle())
+                    .subtitle(postRequestDto.getSubtitle())
+                    .category(postRequestDto.getCategory())
+                    .content(postRequestDto.getContent())
+                    .thumbnailImageUrl(thumbnailUrl)
+                    .date(LocalDate.now())
+                    .user(user)
+                    .build();
 
-        List<PostImage> postImages = saveContentImages(postRequestDto.getContentImages(), post);
-        post.setContentImageUrls(postImages);
+            List<PostImage> postImages = saveContentImages(postRequestDto.getContentImages(), post);
+            post.setContentImageUrls(postImages);
 
-        Post savedPost = postRepository.save(post);
-        return buildPostResponseDto(savedPost);
+            Post savedPost = postRepository.save(post);
+            return buildPostResponseDto(savedPost);
+
+        } catch (Exception e) {
+            if (postRequestDto.getThumbnail() != null) {
+                imageUploadService.deleteFile(postRequestDto.getThumbnail());
+            }
+            if (postRequestDto.getContentImages() != null) {
+                postRequestDto.getContentImages().forEach(imageUploadService::deleteFile);
+            }
+            throw e;
+        }
     }
 
     public PostResponseDto getPost(Long postId) {
