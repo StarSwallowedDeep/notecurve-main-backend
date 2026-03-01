@@ -3,6 +3,8 @@ package com.notecurve.post.controller;
 import java.io.IOException;
 import java.util.List;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +25,7 @@ public class PostController {
 
     // 게시글 저장
     @PostMapping
-    public ResponseEntity<PostResponseDto> createPost(@RequestBody PostRequestDto postRequestDto) throws IOException {
+    public ResponseEntity<PostResponseDto> createPost(@RequestBody @Valid PostRequestDto postRequestDto) throws IOException {
         return ResponseEntity.ok(postService.savePost(postRequestDto, getCurrentUserId()));
     }
 
