@@ -34,6 +34,8 @@ public class ImageUploadController {
                 String filename = imageUploadService.saveFile(file);
                 savedUrls.add("/images/" + filename);
             } catch (IOException e) {
+                // 이미 저장된 파일들 롤백
+                savedUrls.forEach(url -> imageUploadService.deleteFile(url));
                 return ResponseEntity.status(500).body("파일 저장 중 오류 발생");
             }
         }
