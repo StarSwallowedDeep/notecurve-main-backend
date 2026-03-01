@@ -31,7 +31,7 @@ public class NoteFileController {
     private String uploadDir;
 
     @PostMapping("/upload/{noteId}")
-    public ResponseEntity<String> uploadFiles(
+    public ResponseEntity<List<String>> uploadFiles(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @PathVariable Long noteId,
             @RequestParam MultipartFile[] files
@@ -39,12 +39,10 @@ public class NoteFileController {
         Long userId = userDetails.getUser().getId();
 
         try {
-            fileService.uploadFiles(noteId, files, userId);
-
-            return ResponseEntity.ok("파일 여러 개 업로드 성공");
+            List<String> urls = fileService.uploadFilesWithUrls(noteId, files, userId);
+            return ResponseEntity.ok(urls);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("업로드 실패: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -87,8 +85,7 @@ public class NoteFileController {
 
             return ResponseEntity.ok("여러 파일 삭제 성공");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("삭제 실패: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
