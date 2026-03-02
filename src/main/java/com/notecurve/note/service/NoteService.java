@@ -2,9 +2,13 @@ package com.notecurve.note.service;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.notecurve.category.domain.Category;
 import com.notecurve.category.repository.CategoryRepository;
@@ -53,23 +57,25 @@ public class NoteService {
     // 노트 생성
     @Transactional
     public List<NoteDTO> createNotes(User user, NotesRequest notesRequest) {
-        
-        // category를 final로 선언하여 람다 내부에서 사용 가능
-        final Category category = (notesRequest.getCategory() != null) ? new Category() : null;
 
-        if (notesRequest.getCategory() != null) {
-            category.setId(notesRequest.getCategory());
-            if (!isUserAuthorizedForCategory(category.getId(), user)) {
-                throw new RuntimeException("Forbidden category access");
-            }
+        if (notesRequest.getCategory() == null) {
+            throw new RuntimeException("카테고리는 필수입니다.");
         }
 
+        if (!isUserAuthorizedForCategory(notesRequest.getCategory(), user)) {
+            throw new RuntimeException("Forbidden category access");
+        }
+
+        final Category category = categoryRepository.findById(notesRequest.getCategory())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
         return notesRequest.getNotes().stream().map(dto -> {
-            Note note = new Note();
-            note.setTitle(dto.getTitle() != null ? dto.getTitle() : "제목 없음");
-            note.setContent(dto.getContent() != null ? dto.getContent() : "내용 없음");
-            note.setUser(user);
-            note.setCategory(category);
+            Note note = Note.builder()
+                    .title(dto.getTitle() != null ? dto.getTitle() : "제목 없음")
+                    .content(dto.getContent() != null ? dto.getContent() : "내용 없음")
+                    .user(user)
+                    .category(category)
+                    .build();
 
             Note saved = saveNote(note);
             return convertToDTO(saved);
@@ -80,6 +86,12 @@ public class NoteService {
     @Transactional
     public NoteDTO updateNote(User user, Long noteId, NoteDTO noteDTO) {
         Note note = getNoteWithRelations(noteId, user);
+
+        // 삭제된 이미지 URL 추출
+        Set<String> oldImageUrls = extractImageUrls(note.getContent());
+        Set<String> newImageUrls = extractImageUrls(noteDTO.getContent());
+        Set<String> deletedImageUrls = new HashSet<>(oldImageUrls);
+        deletedImageUrls.removeAll(newImageUrls);
 
         if (noteDTO.getDeletedFileIds() != null) {
             for (Long fileId : noteDTO.getDeletedFileIds()) {
@@ -95,6 +107,18 @@ public class NoteService {
         note.setContent(noteDTO.getContent() != null ? noteDTO.getContent() : "내용 없음");
 
         Note updated = saveNote(note);
+
+        // 커밋 후 삭제된 이미지 파일 삭제
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deletedImageUrls.forEach(url -> {
+                    String fileName = url.substring(url.lastIndexOf('/') + 1);
+                    noteFileService.deleteFileByStoredName(fileName);
+                });
+            }
+        });
+
         return convertToDTO(updated);
     }
 
@@ -139,5 +163,17 @@ public class NoteService {
                 .createdDate(note.getCreatedDate())
                 .category(new CategoryDTO(categoryId, categoryName))
                 .build();
+    }
+
+    // 이미지 URL 추출 메서드
+    private Set<String> extractImageUrls(String content) {
+        if (content == null) return new HashSet<>();
+        Set<String> urls = new HashSet<>();
+        java.util.regex.Matcher matcher =
+            java.util.regex.Pattern.compile("<img[^>]+src=\"([^\"]+)\"").matcher(content);
+        while (matcher.find()) {
+            urls.add(matcher.group(1));
+        }
+        return urls;
     }
 }
