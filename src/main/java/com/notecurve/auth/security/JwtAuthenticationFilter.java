@@ -29,17 +29,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+                                    FilterChain filterChain)
+            throws ServletException, IOException {
 
         Optional<String> tokenOptional = extractTokenFromCookies(request);
 
-        tokenOptional.ifPresent(token -> {
+        if (tokenOptional.isPresent()) {
+            String token = tokenOptional.get();
+
             if (jwtTokenProvider.validateToken(token)) {
                 authenticateUser(token);
             }
-        });
+        }
 
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/auth/");
     }
 
     private Optional<String> extractTokenFromCookies(HttpServletRequest request) {
