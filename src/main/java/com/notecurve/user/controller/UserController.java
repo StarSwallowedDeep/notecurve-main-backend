@@ -69,7 +69,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String loginId = authentication.getName(); 
+        String loginId = authentication.getName();
 
         try {
             userService.deleteUser(id, loginId);
@@ -81,8 +81,16 @@ public class UserController {
                     .maxAge(0)
                     .build();
 
+            ResponseCookie deleteRefreshCookie = ResponseCookie.from("refresh_token", "")
+                    .httpOnly(true)
+                    .secure(false)
+                    .path("/")
+                    .maxAge(0)
+                    .build();
+
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, deleteRefreshCookie.toString())
                     .body("회원 탈퇴가 완료되었습니다.");
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("본인 계정만 탈퇴할 수 있습니다.");
