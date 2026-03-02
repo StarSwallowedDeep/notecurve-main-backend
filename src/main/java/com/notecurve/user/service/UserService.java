@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.notecurve.user.domain.User;
 import com.notecurve.user.repository.UserRepository;
+import com.notecurve.auth.repository.RefreshTokenRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +16,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     // 회원가입 메서드
     @Transactional
@@ -101,6 +103,7 @@ public class UserService {
             throw new IllegalStateException("본인 계정만 탈퇴할 수 있습니다.");
         }
 
+        refreshTokenRepository.deleteByLoginId(loginId);
         userRepository.delete(user);
     }
 
@@ -110,4 +113,3 @@ public class UserService {
             .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
     }
 }
-
