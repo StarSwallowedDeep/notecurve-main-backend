@@ -15,10 +15,14 @@ import com.notecurve.user.domain.User;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
+@Entity
 @Getter
 @NoArgsConstructor
-@Entity
+@AllArgsConstructor
+@Builder
 public class Note {
 
     @Id
@@ -40,7 +44,6 @@ public class Note {
     @Column(updatable = false)
     private LocalDateTime createdDate;
 
-    @Setter
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
