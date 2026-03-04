@@ -76,14 +76,14 @@ public class UserController {
 
             ResponseCookie deleteCookie = ResponseCookie.from("token", "")
                     .httpOnly(true)
-                    .secure(false)
+                    .secure(true)
                     .path("/")
                     .maxAge(0)
                     .build();
 
             ResponseCookie deleteRefreshCookie = ResponseCookie.from("refresh_token", "")
                     .httpOnly(true)
-                    .secure(false)
+                    .secure(true)
                     .path("/")
                     .maxAge(0)
                     .build();
