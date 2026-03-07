@@ -26,4 +26,5 @@ public class PostResponseDto {
     private LocalDate date;
     private String userName;
     private Long userId;
+    private String profileImage;
 }
