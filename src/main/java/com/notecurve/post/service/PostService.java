@@ -256,6 +256,7 @@ public class PostService {
                 .date(post.getDate())
                 .userName(userName)
                 .userId(post.getUser() != null ? post.getUser().getId() : null)
+                .profileImage(post.getUser() != null ? post.getUser().getProfileImage() : null)
                 .build();
     }
 
