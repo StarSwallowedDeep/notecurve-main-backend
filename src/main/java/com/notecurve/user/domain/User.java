@@ -23,4 +23,6 @@ public class User {
 
     @Column(unique = true)
     private String name;
+
+    private String profileImage;
 }
