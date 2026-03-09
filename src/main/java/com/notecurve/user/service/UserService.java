@@ -1,8 +1,13 @@
 package com.notecurve.user.service;
 
+import java.io.IOException;
+import java.nio.file.*;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.notecurve.user.domain.User;
 import com.notecurve.user.repository.UserRepository;
@@ -17,6 +22,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
+
+    @Value("${profile.upload-dir}")
+    private String profileUploadDir;
 
     // 회원가입 메서드
     @Transactional
@@ -45,6 +53,51 @@ public class UserService {
         String encodedPassword = passwordEncoder.encode(user.getPassword());
         user.setPassword(encodedPassword);
         userRepository.save(user);
+    }
+
+   // 프로필 이미지 저장 메서드
+    @Transactional
+    public void updateProfileImage(Long userId, String loginId, MultipartFile file) throws IOException {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+        if (!user.getLoginId().equals(loginId)) {
+            throw new IllegalStateException("본인 계정만 변경할 수 있습니다.");
+        }
+
+        // 기존 프로필 이미지 삭제
+        if (user.getProfileImage() != null) {
+            Path oldFile = Paths.get(profileUploadDir).resolve(user.getProfileImage());
+            Files.deleteIfExists(oldFile);
+        }
+
+        // 새 이미지 저장
+        String ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")).toLowerCase();
+        String filename = "profile_" + userId + ext;
+        Path savePath = Paths.get(profileUploadDir).resolve(filename);
+        Files.createDirectories(savePath.getParent());
+        Files.copy(file.getInputStream(), savePath, StandardCopyOption.REPLACE_EXISTING);
+
+        user.setProfileImage(filename);
+        userRepository.save(user);
+    }
+
+    // 프로필 이미지 삭제 메서드
+    @Transactional
+    public void deleteProfileImage(Long userId, String loginId) throws IOException {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+        if (!user.getLoginId().equals(loginId)) {
+            throw new IllegalStateException("본인 계정만 변경할 수 있습니다.");
+        }
+
+        if (user.getProfileImage() != null) {
+            Path profileFile = Paths.get(profileUploadDir).resolve(user.getProfileImage());
+            Files.deleteIfExists(profileFile);
+            user.setProfileImage(null);
+            userRepository.save(user);
+        }
     }
 
     // 패스워드 변경 메서드
@@ -101,6 +154,15 @@ public class UserService {
 
         if (!user.getLoginId().equals(loginId)) {
             throw new IllegalStateException("본인 계정만 탈퇴할 수 있습니다.");
+        }
+
+        if (user.getProfileImage() != null) {
+            Path profileFile = Paths.get(profileUploadDir).resolve(user.getProfileImage());
+            try {
+                Files.deleteIfExists(profileFile);
+            } catch (IOException e) {
+                System.err.println("프로필 이미지 삭제 실패: " + profileFile);
+            }
         }
 
         refreshTokenRepository.deleteByLoginId(loginId);
