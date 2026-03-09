@@ -1,6 +1,7 @@
 package com.notecurve.user.controller;
 
 import java.util.Map;
+import java.io.IOException;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.notecurve.user.domain.User;
 import com.notecurve.user.service.UserService;
@@ -29,6 +31,43 @@ public class UserController {
             return ResponseEntity.ok("회원가입 성공");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("회원가입 실패: " + e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/profile-image")
+    public ResponseEntity<String> updateProfileImage(
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile file) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String loginId = authentication.getName();
+
+        try {
+            userService.updateProfileImage(id, loginId, file);
+            return ResponseEntity.ok("프로필 이미지 변경 완료");
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("본인 계정만 변경할 수 있습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자를 찾을 수 없습니다.");
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("파일 저장 중 오류 발생");
+        }
+    }
+
+    @DeleteMapping("/{id}/profile-image")
+    public ResponseEntity<String> deleteProfileImage(@PathVariable Long id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String loginId = authentication.getName();
+
+        try {
+            userService.deleteProfileImage(id, loginId);
+            return ResponseEntity.ok("프로필 이미지 삭제 완료");
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("본인 계정만 변경할 수 있습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자를 찾을 수 없습니다.");
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("파일 삭제 중 오류 발생");
         }
     }
 
