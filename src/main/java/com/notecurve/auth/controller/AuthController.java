@@ -28,17 +28,21 @@ public class AuthController {
 
     // 로그인
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-        AuthService.TokenPair tokens = authService.login(loginRequest.loginId(), loginRequest.password());
-        User user = userService.findByLoginId(loginRequest.loginId());
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        try {
+            AuthService.TokenPair tokens = authService.login(loginRequest.loginId(), loginRequest.password());
+            User user = userService.findByLoginId(loginRequest.loginId());
 
-        ResponseCookie accessCookie = createTokenCookie("token", tokens.accessToken());
-        ResponseCookie refreshCookie = createTokenCookie("refresh_token", tokens.refreshToken());
+            ResponseCookie accessCookie = createTokenCookie("token", tokens.accessToken());
+            ResponseCookie refreshCookie = createTokenCookie("refresh_token", tokens.refreshToken());
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(new LoginResponse("로그인 성공", tokens.accessToken(), user.getLoginId(), user.getName(), user.getId()));
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(new LoginResponse("로그인 성공", tokens.accessToken(), user.getLoginId(), user.getName(), user.getId(), user.getProfileImage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
+        }
     }
 
     // 액세스 토큰 재발급
@@ -90,7 +94,7 @@ public class AuthController {
         if (user == null) return ResponseEntity.status(401).build();
 
         String token = getTokenFromCookies(request, "token");
-        return ResponseEntity.ok(new LoginResponse("로그인 상태", token, user.getLoginId(), user.getName(), user.getId()));
+        return ResponseEntity.ok(new LoginResponse("로그인 상태", token, user.getLoginId(), user.getName(), user.getId(), user.getProfileImage()));
     }
 
     // 쿠키 생성
