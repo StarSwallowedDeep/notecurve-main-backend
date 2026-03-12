@@ -5,5 +5,6 @@ public record LoginResponse(
     String token,
     String loginId,
     String name,
-    Long id
+    Long id,
+    String profileImage
 ) {}
