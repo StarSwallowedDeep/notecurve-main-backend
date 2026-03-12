@@ -23,6 +23,9 @@ public class ImageServeService {
     @Value("${file.upload-dir}")
     private Path uploadDir;
 
+    @Value("${profile.upload-dir}")
+    private Path profileUploadDir;
+
     public Resource serveImage(String filename) throws IOException {
         String sanitizedFilename = FilenameUtils.getName(filename);
         Path filePath = uploadDir.resolve(sanitizedFilename).normalize();
@@ -36,6 +39,25 @@ public class ImageServeService {
         Resource resource = new FileSystemResource(filePath);
 
         // 파일 존재 여부 확인
+        if (!resource.exists() || !resource.isReadable()) {
+            LOGGER.warning("File not found or unreadable: " + filePath);
+            throw new FileNotFoundException("File not found: " + filePath);
+        }
+
+        return resource;
+    }
+
+    public Resource serveProfileImage(String filename) throws IOException {
+        String sanitizedFilename = FilenameUtils.getName(filename);
+        Path filePath = profileUploadDir.resolve(sanitizedFilename).normalize();
+
+        if (!filePath.startsWith(profileUploadDir)) {
+            LOGGER.warning("Invalid file path: " + filePath);
+            throw new IllegalArgumentException("Invalid file path");
+        }
+
+        Resource resource = new FileSystemResource(filePath);
+
         if (!resource.exists() || !resource.isReadable()) {
             LOGGER.warning("File not found or unreadable: " + filePath);
             throw new FileNotFoundException("File not found: " + filePath);
