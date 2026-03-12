@@ -44,4 +44,19 @@ public class ImageServeController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @GetMapping("/profiles/{filename:.+}")
+    public ResponseEntity<Resource> serveProfileImage(@PathVariable String filename) {
+        try {
+            Resource resource = imageServeService.serveProfileImage(filename);
+            String contentType = imageServeService.determineContentType(resource.getFile().toPath());
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .body(resource);
+        } catch (IOException | IllegalArgumentException e) {
+            LOGGER.severe("Error: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }
