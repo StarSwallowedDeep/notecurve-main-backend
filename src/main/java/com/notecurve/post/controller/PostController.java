@@ -25,8 +25,10 @@ public class PostController {
 
     // 게시글 저장
     @PostMapping
-    public ResponseEntity<PostResponseDto> createPost(@RequestBody @Valid PostRequestDto postRequestDto) throws IOException {
-        return ResponseEntity.ok(postService.savePost(postRequestDto, getCurrentUserId()));
+    public ResponseEntity<PostResponseDto> createPost(
+            @RequestBody @Valid PostRequestDto postRequestDto,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) throws IOException {
+        return ResponseEntity.ok(postService.savePost(postRequestDto, getCurrentUserId(), idempotencyKey));
     }
 
     // 게시글 ID로 조회
