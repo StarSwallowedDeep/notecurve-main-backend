@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.*;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +15,9 @@ import com.notecurve.user.repository.UserRepository;
 import com.notecurve.auth.repository.RefreshTokenRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -22,6 +25,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
 
     @Value("${profile.upload-dir}")
     private String profileUploadDir;
@@ -166,6 +172,8 @@ public class UserService {
         }
 
         refreshTokenRepository.deleteByLoginId(loginId);
+        deleteFromRedis(loginId);
+
         userRepository.delete(user);
     }
 
@@ -173,5 +181,22 @@ public class UserService {
     public User findByLoginId(String loginId) {
         return userRepository.findByLoginId(loginId)
             .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+    }
+
+    // ========== Redis 헬퍼 메서드 ==========
+
+    private void deleteFromRedis(String loginId) {
+        try {
+            // loginId로 기존 토큰 조회
+            String oldToken = redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + "loginId:" + loginId);
+            if (oldToken != null) {
+                // 토큰 키 삭제
+                redisTemplate.delete(REFRESH_TOKEN_PREFIX + "token:" + oldToken);
+            }
+            // loginId 키 삭제
+            redisTemplate.delete(REFRESH_TOKEN_PREFIX + "loginId:" + loginId);
+        } catch (Exception e) {
+            log.warn("Redis 삭제 실패: {}", e.getMessage());
+        }
     }
 }
