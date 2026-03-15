@@ -3,13 +3,16 @@ package com.notecurve.post.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,11 +22,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.notecurve.image.service.ImageUploadService;
 import com.notecurve.post.domain.Post;
-import com.notecurve.post.domain.PostImage;
 import com.notecurve.post.dto.PostRequestDto;
 import com.notecurve.post.dto.PostResponseDto;
 import com.notecurve.post.repository.PostRepository;
@@ -41,6 +45,12 @@ class PostServiceTest {
 
     @Mock
     private ImageUploadService imageUploadService;
+
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     private PostService postService;
@@ -66,6 +76,8 @@ class PostServiceTest {
         when(testUser.getId()).thenReturn(1L);
         when(testUser.getName()).thenReturn("testUser");
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         List<String> allowedExtensions = List.of("jpg", "jpeg", "png", "gif");
 
@@ -85,11 +97,61 @@ class PostServiceTest {
                     .build();
 
             // When
-            PostResponseDto result = postService.savePost(testRequest, 1L);
+            PostResponseDto result = postService.savePost(testRequest, 1L, "testKey-" + ext);
 
             // Then
             assertThat(result.getTitle()).isEqualTo("testTitle");
         }
+    }
+
+    @Test
+    @DisplayName("게시글 저장 성공 - idempotencyKey 없어도 저장 가능")
+    void savePost_success_noIdempotencyKey() throws IOException {
+        // Given
+        User testUser = mock(User.class);
+        when(testUser.getName()).thenReturn("testUser");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+        Post savedPost = mock(Post.class);
+        when(savedPost.getTitle()).thenReturn("testTitle");
+        when(savedPost.getUser()).thenReturn(testUser);
+        when(savedPost.getContentImageUrls()).thenReturn(new ArrayList<>());
+        when(postRepository.save(any())).thenReturn(savedPost);
+
+        PostRequestDto testRequest = PostRequestDto.builder()
+                .title("testTitle")
+                .subtitle("testSubtitle")
+                .category("testCategory")
+                .content("testContent")
+                .thumbnail("/images/testImage.jpg")
+                .build();
+
+        // When - idempotencyKey 없이 요청
+        PostResponseDto result = postService.savePost(testRequest, 1L, null);
+
+        // Then
+        assertThat(result.getTitle()).isEqualTo("testTitle");
+    }
+
+    @Test
+    @DisplayName("게시글 저장 실패 - 중복 요청 차단")
+    void savePost_fail_duplicateRequest() {
+        // Given
+        PostRequestDto testRequest = PostRequestDto.builder()
+                .title("testTitle")
+                .subtitle("testSubtitle")
+                .category("testCategory")
+                .content("testContent")
+                .thumbnail("/images/testImage.jpg")
+                .build();
+
+        // Redis에 이미 키가 있는 상황 (중복 요청)
+        when(redisTemplate.hasKey("idempotency:testKey")).thenReturn(true);
+
+        // When & Then
+        assertThatThrownBy(() -> postService.savePost(testRequest, 1L, "testKey"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("중복 요청입니다.");
     }
 
     @Test
@@ -105,11 +167,16 @@ class PostServiceTest {
                 .build();
 
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         // When & Then
-        assertThatThrownBy(() -> postService.savePost(testRequest, 999L))
+        assertThatThrownBy(() -> postService.savePost(testRequest, 999L, "testKey"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("사용자를 찾을 수 없습니다.");
+
+        // 실패 시 idempotency 키 삭제됐는지 검증
+        verify(redisTemplate, times(1)).delete("idempotency:testKey");
     }
 
     @Test
@@ -118,6 +185,8 @@ class PostServiceTest {
         // Given
         User testUser = mock(User.class);
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         PostRequestDto testRequest = PostRequestDto.builder()
                 .title("testTitle")
@@ -128,9 +197,12 @@ class PostServiceTest {
                 .build();
 
         // When & Then
-        assertThatThrownBy(() -> postService.savePost(testRequest, 1L))
+        assertThatThrownBy(() -> postService.savePost(testRequest, 1L, "testKey"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("허용되지 않는 파일 형식입니다: testFile.exe");
+
+        // 실패 시 idempotency 키 삭제됐는지 검증
+        verify(redisTemplate, times(1)).delete("idempotency:testKey");
     }
 
     // ========== getPost 테스트 ==========
