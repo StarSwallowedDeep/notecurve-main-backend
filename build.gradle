@@ -48,6 +48,10 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 
+	// --- Redis ---
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
 	// --- 테스트 ---
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
