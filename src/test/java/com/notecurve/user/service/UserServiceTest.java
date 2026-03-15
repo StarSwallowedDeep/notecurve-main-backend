@@ -3,12 +3,14 @@ package com.notecurve.user.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +20,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -39,6 +43,12 @@ class UserServiceTest {
 
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
+
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     private UserService userService;
@@ -332,7 +342,7 @@ class UserServiceTest {
     // ========== deleteUser 테스트 ==========
 
     @Test
-    @DisplayName("회원 탈퇴 성공 - DB에서 사용자 삭제")
+    @DisplayName("회원 탈퇴 성공 - DB + Redis에서 리프레시 토큰 삭제")
     void deleteUser_success() {
         // Given
         User testUser = mock(User.class);
@@ -340,6 +350,8 @@ class UserServiceTest {
         when(testUser.getProfileImage()).thenReturn(null);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("refresh_token:loginId:testUser1")).thenReturn(null);
 
         // When
         userService.deleteUser(1L, "testUser1");
@@ -347,6 +359,7 @@ class UserServiceTest {
         // Then
         verify(refreshTokenRepository, times(1)).deleteByLoginId("testUser1");
         verify(userRepository, times(1)).delete(testUser);
+        verify(redisTemplate, times(1)).delete("refresh_token:loginId:testUser1");
     }
 
     @Test
@@ -361,6 +374,8 @@ class UserServiceTest {
         when(testUser.getProfileImage()).thenReturn("testProfile.jpg");
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("refresh_token:loginId:testUser1")).thenReturn(null);
 
         // When
         userService.deleteUser(1L, "testUser1");
@@ -369,6 +384,26 @@ class UserServiceTest {
         verify(refreshTokenRepository, times(1)).deleteByLoginId("testUser1");
         verify(userRepository, times(1)).delete(testUser);
         assertThat(Files.exists(testProfileImage)).isFalse();
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴 성공 - Redis 죽어도 DB에서 삭제")
+    void deleteUser_success_redisDown() {
+        // Given
+        User testUser = mock(User.class);
+        when(testUser.getLoginId()).thenReturn("testUser1");
+        when(testUser.getProfileImage()).thenReturn(null);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(anyString())).thenThrow(new RuntimeException("Redis 연결 실패"));
+
+        // When
+        userService.deleteUser(1L, "testUser1");
+
+        // Then
+        verify(refreshTokenRepository, times(1)).deleteByLoginId("testUser1");
+        verify(userRepository, times(1)).delete(testUser);
     }
 
     @Test
