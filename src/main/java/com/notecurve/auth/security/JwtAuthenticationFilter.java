@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.notecurve.user.domain.User;
 import com.notecurve.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -69,7 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String loginId = jwtTokenProvider.getLoginIdFromToken(token);
         String role = jwtTokenProvider.getRoleFromToken(token);
 
-        com.notecurve.user.domain.User user = userRepository.findByLoginId(loginId)
+        User user = userRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
 
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
