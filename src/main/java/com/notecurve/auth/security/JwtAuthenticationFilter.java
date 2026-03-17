@@ -1,6 +1,7 @@
 package com.notecurve.auth.security;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.servlet.FilterChain;
@@ -10,11 +11,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.notecurve.user.domain.User;
 import com.notecurve.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -66,14 +67,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private void authenticateUser(String token) {
         String loginId = jwtTokenProvider.getLoginIdFromToken(token);
+        String role = jwtTokenProvider.getRoleFromToken(token);
 
-        User user = userRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+        com.notecurve.user.domain.User user = userRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
 
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
 
+        List<SimpleGrantedAuthority> authorities = 
+                List.of(new SimpleGrantedAuthority("ROLE_" + role));
+
         UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
