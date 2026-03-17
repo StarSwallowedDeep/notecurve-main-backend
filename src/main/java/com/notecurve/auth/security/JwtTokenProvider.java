@@ -32,8 +32,17 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateAccessToken(String loginId) {
-        return generateToken(loginId, ACCESS_EXPIRATION_TIME);
+    public String generateAccessToken(String loginId, String role) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + ACCESS_EXPIRATION_TIME);
+
+        return Jwts.builder()
+                .setSubject(loginId)
+                .claim("role", role)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
     }
 
     public String generateRefreshToken(String loginId) {
@@ -54,6 +63,10 @@ public class JwtTokenProvider {
 
     public String getLoginIdFromToken(String token) {
         return parseToken(token).getSubject();
+    }
+
+    public String getRoleFromToken(String token) {
+        return parseToken(token).get("role", String.class);
     }
 
     public boolean validateToken(String token) {
