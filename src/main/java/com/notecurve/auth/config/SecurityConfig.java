@@ -79,10 +79,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/images/**").permitAll()
                 .requestMatchers("/api/articles/**").permitAll()
                 .requestMatchers("/mcp/**").permitAll()
-                // GET 요청은 모두 허용
-                .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/message-boards/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
+                // ADMIN 전용
+                .requestMatchers("/api/posts/internal/**").hasRole("ADMIN")
+                .requestMatchers("/api/comments/internal/**").hasRole("ADMIN")
+                .requestMatchers("/api/users/internal/**").hasRole("ADMIN")
                 // 인증 필요 경로
                 .requestMatchers("/api/users/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
@@ -93,6 +94,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/categories/**").authenticated()
                 .requestMatchers("/api/notes/**").authenticated()
                 .requestMatchers("/api/files/**").authenticated()
+                // GET 요청은 모두 허용
+                .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/message-boards/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
                 // 그 외 요청도 모두 인증 필요
                 .anyRequest().authenticated()
             )
