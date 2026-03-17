@@ -39,7 +39,15 @@ public class AuthController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(new LoginResponse("로그인 성공", tokens.accessToken(), user.getLoginId(), user.getName(), user.getId(), user.getProfileImage()));
+                    .body(new LoginResponse(
+                        "로그인 성공",
+                        tokens.accessToken(),
+                        user.getLoginId(),
+                        user.getName(),
+                        user.getId(),
+                        user.getProfileImage(),
+                        user.getRole().name()
+                    ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(401).body(e.getMessage());
         }
@@ -94,7 +102,7 @@ public class AuthController {
         if (user == null) return ResponseEntity.status(401).build();
 
         String token = getTokenFromCookies(request, "token");
-        return ResponseEntity.ok(new LoginResponse("로그인 상태", token, user.getLoginId(), user.getName(), user.getId(), user.getProfileImage()));
+        return ResponseEntity.ok(new LoginResponse("로그인 상태", token, user.getLoginId(), user.getName(), user.getId(), user.getProfileImage(), user.getRole().name()));
     }
 
     // 쿠키 생성
