@@ -2,6 +2,7 @@ package com.notecurve.user.service;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -13,6 +14,18 @@ import org.springframework.web.multipart.MultipartFile;
 import com.notecurve.user.domain.User;
 import com.notecurve.user.repository.UserRepository;
 import com.notecurve.auth.repository.RefreshTokenRepository;
+import com.notecurve.note.domain.Note;
+import com.notecurve.note.repository.NoteRepository;
+import com.notecurve.notefile.domain.NoteFile;
+import com.notecurve.notefile.service.NoteFileService;
+import com.notecurve.category.domain.Category;
+import com.notecurve.category.repository.CategoryRepository;
+import com.notecurve.post.domain.Post;
+import com.notecurve.post.repository.PostRepository;
+import com.notecurve.messageboard.repository.CommentRepository;
+import com.notecurve.messageboard.repository.MessageBoardRepository;
+import com.notecurve.image.service.ImageUploadService;
+import com.notecurve.kafka.producer.EventProducer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +39,16 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
     private final StringRedisTemplate redisTemplate;
+
+    private final NoteRepository noteRepository;
+    private final NoteFileService noteFileService;
+    private final CategoryRepository categoryRepository;
+    private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
+    private final MessageBoardRepository messageBoardRepository;
+    private final ImageUploadService imageUploadService;
+
+    private final EventProducer eventProducer;
 
     private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
 
@@ -59,6 +82,13 @@ public class UserService {
         String encodedPassword = passwordEncoder.encode(user.getPassword());
         user.setPassword(encodedPassword);
         userRepository.save(user);
+        eventProducer.sendUserEvent(
+            "CREATED", 
+            user.getId(), 
+            user.getLoginId(), 
+            user.getName(), 
+            user.getRole().name()
+        );
     }
 
    // 프로필 이미지 저장 메서드
@@ -150,6 +180,14 @@ public class UserService {
 
         user.setName(newName);
         userRepository.save(user);
+
+        eventProducer.sendUserEvent(
+            "UPDATED", 
+            user.getId(), 
+            user.getLoginId(), 
+            user.getName(), 
+            user.getRole().name()
+        );
     }
 
     // 회원탈퇴 메서드
@@ -175,6 +213,93 @@ public class UserService {
         deleteFromRedis(loginId);
 
         userRepository.delete(user);
+        eventProducer.sendUserEvent("DELETED", userId, null, null, null);
+    }
+
+    // 전체 유저 목록 (관리자용)
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    // 유저 수 카운트
+    public long countUsers() {
+        return userRepository.count();
+    }
+
+    // Role 변경 (관리자용)
+    @Transactional
+    public void updateUserRole(Long userId, User.Role role) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+        user.setRole(role);
+        userRepository.save(user);
+    }
+
+    // 강제 탈퇴 (관리자용)
+    @Transactional
+    public void adminDeleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+        // 1. NoteFile 물리적 파일 + DB 삭제
+        List<Note> notes = noteRepository.findByUserWithFiles(user);
+        for (Note note : notes) {
+            if (note.getFiles() != null) {
+                for (NoteFile file : note.getFiles()) {
+                    try {
+                        noteFileService.deletePhysicalFile(file);
+                    } catch (IOException e) {
+                        log.warn("NoteFile 물리적 삭제 실패: {}", file.getId());
+                    }
+                }
+            }
+        }
+
+        // 2. Note 삭제 (NoteFile cascade로 같이 삭제)
+        noteRepository.deleteAll(notes);
+
+        // 3. Category 삭제
+        List<Category> categories = categoryRepository.findByUser(user);
+        categoryRepository.deleteAll(categories);
+
+        // 4. Post 삭제 (PostImage cascade로 같이 삭제)
+        List<Post> posts = postRepository.findByUser(user);
+        for (Post post : posts) {
+            // 썸네일 물리적 파일 삭제
+            if (post.getThumbnailImageUrl() != null) {
+                imageUploadService.deleteFile(post.getThumbnailImageUrl());
+            }
+            // 본문 이미지 물리적 파일 삭제
+            if (post.getContentImageUrls() != null) {
+                post.getContentImageUrls()
+                    .forEach(img -> imageUploadService.deleteFile(img.getContentImageUrl()));
+            }
+        }
+        postRepository.deleteAll(posts);
+
+        // 5. Comment 삭제
+        commentRepository.deleteByUser(user);
+
+        // 6. MessageBoard 삭제 (Comment cascade로 같이 삭제)
+        messageBoardRepository.deleteByUser(user);
+
+        // 7. 프로필 이미지 물리적 파일 삭제
+        if (user.getProfileImage() != null) {
+            try {
+                Path profileFile = Paths.get(profileUploadDir).resolve(user.getProfileImage());
+                Files.deleteIfExists(profileFile);
+            } catch (IOException e) {
+                log.warn("프로필 이미지 삭제 실패: {}", user.getProfileImage());
+            }
+        }
+
+        // 8. RefreshToken + Redis 삭제
+        refreshTokenRepository.deleteByLoginId(user.getLoginId());
+        deleteFromRedis(user.getLoginId());
+
+        // 9. User 삭제
+        userRepository.delete(user);
+        eventProducer.sendUserEvent("DELETED", userId, null, null, null);
     }
 
     // 로그인 ID로 사용자 찾기
