@@ -41,7 +41,7 @@ public class AuthService {
             throw new IllegalArgumentException("비밀번호가 올바르지 않습니다.");
         }
 
-        String accessToken = jwtTokenProvider.generateAccessToken(loginId);
+        String accessToken = jwtTokenProvider.generateAccessToken(loginId, user.getRole().name());
         String refreshToken = createAndSaveRefreshToken(loginId);
 
         return new TokenPair(accessToken, refreshToken);
@@ -77,8 +77,11 @@ public class AuthService {
             saveToRedis(refreshToken, loginId);
         }
 
+        User user = userRepository.findByLoginId(loginId)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+            
         // 기존 리프레시 토큰 삭제 후 새로 발급
-        String newAccessToken = jwtTokenProvider.generateAccessToken(loginId);
+        String newAccessToken = jwtTokenProvider.generateAccessToken(loginId, user.getRole().name());
         String newRefreshToken = createAndSaveRefreshToken(loginId);
 
         return new TokenPair(newAccessToken, newRefreshToken);
