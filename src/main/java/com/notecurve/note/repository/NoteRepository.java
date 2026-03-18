@@ -35,4 +35,12 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
            WHERE n.category = :category
            """)
     List<Note> findByCategoryWithFetch(Category category);
+
+    // 관리자 유저 삭제용 - files까지 fetch
+    @Query("""
+           SELECT DISTINCT n FROM Note n
+           LEFT JOIN FETCH n.files
+           WHERE n.user = :user
+           """)
+    List<Note> findByUserWithFiles(User user);
 }
