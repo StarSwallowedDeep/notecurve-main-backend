@@ -67,4 +67,17 @@ public class PostController {
                 .getUser()
                 .getId();
     }
+
+    // 관리자 서버
+    @GetMapping("/internal/all")
+    public ResponseEntity<List<PostResponseDto>> getAllPostsInternal() {
+        List<PostResponseDto> posts = postService.getAllPosts();
+        return ResponseEntity.ok(posts);
+    }
+
+    @DeleteMapping("/internal/{id}")
+    public ResponseEntity<Void> forceDeletePost(@PathVariable Long id) {
+        postService.adminDeletePost(id);
+        return ResponseEntity.noContent().build();
+    }
 }
