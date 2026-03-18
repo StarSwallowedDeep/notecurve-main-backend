@@ -2,6 +2,7 @@ package com.notecurve.user.controller;
 
 import java.util.Map;
 import java.io.IOException;
+import java.util.List;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -136,5 +137,25 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자를 찾을 수 없습니다.");
         }
+    }
+
+    @GetMapping("/internal/all")
+    public ResponseEntity<List<User>> getAllUsersInternal() {
+        return ResponseEntity.ok(userService.getAllUsers()); 
+    }
+
+    @DeleteMapping("/internal/{id}")
+    public ResponseEntity<Void> forceDeleteUser(@PathVariable Long id) {
+        userService.adminDeleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/internal/{id}/role")
+    public ResponseEntity<Void> updateUserRole(
+            @PathVariable Long id, 
+            @RequestParam User.Role role) {
+        
+        userService.updateUserRole(id, role);
+        return ResponseEntity.noContent().build();
     }
 }
