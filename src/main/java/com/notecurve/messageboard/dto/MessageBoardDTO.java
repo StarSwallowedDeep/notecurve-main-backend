@@ -12,6 +12,7 @@ import java.util.List;
 public class MessageBoardDTO {
 
     private Long id;
+    private Long userId;
     private String title;
     private String createdAt;
     private List<CommentDTO> comments;
