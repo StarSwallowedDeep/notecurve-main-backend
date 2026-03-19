@@ -88,9 +88,26 @@ public class MessageBoardController {
         return ResponseEntity.notFound().build();
     }
 
+    @GetMapping("/internal/all")
+    public ResponseEntity<List<MessageBoardDTO>> getAllBoardsInternal() {
+        // 엔티티가 아닌 DTO 리스트로 변환해서 반환
+        List<MessageBoardDTO> dtos = messageBoardService.getAllMessageBoards().stream()
+                .map(board -> convertToDTO(board, false, null)) // 댓글은 제외하고 변환
+                .collect(Collectors.toList());
+                
+        return ResponseEntity.ok(dtos);
+    }
+
+    @DeleteMapping("/internal/{id}")
+    public ResponseEntity<Void> forceDeleteBoard(@PathVariable Long id) {
+        messageBoardService.adminDeleteMessageBoard(id);
+        return ResponseEntity.noContent().build();
+    }
+
     private MessageBoardDTO convertToDTO(MessageBoard messageBoard, boolean includeComments, Long userId) {
         return new MessageBoardDTO(
             messageBoard.getId(),
+            messageBoard.getUser().getId(),
             messageBoard.getTitle(),
             messageBoard.getFormattedCreatedAt(),
             includeComments ? commentService.getCommentsByMessageBoard(messageBoard.getId(), userId) : null,
