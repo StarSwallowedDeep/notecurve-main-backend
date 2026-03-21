@@ -29,7 +29,7 @@ public class MessageBoardService {
         messageBoard.setUser(user);
 
         MessageBoard savedBoard = messageBoardRepository.save(messageBoard);
-        eventProducer.sendMessageBoardEvent("CREATED", savedBoard.getId(), user.getId(), savedBoard.getTitle(), user.getName());
+        eventProducer.sendMessageBoardEvent("CREATED", savedBoard.getId(), user.getId(), savedBoard.getTitle(), user.getName(), savedBoard.getFormattedCreatedAt());
 
         return savedBoard;
     }
@@ -50,18 +50,12 @@ public class MessageBoardService {
         MessageBoard messageBoard = messageBoardRepository.findById(id).orElse(null);
         if (messageBoard != null && messageBoard.getUser().getId().equals(user.getId())) {
             
-            // 1. 삭제될 댓글들을 찾아서 각각 삭제 이벤트 발행
-            List<Comment> commentsToDelete = commentRepository.findByMessageBoard(messageBoard);
-            commentsToDelete.forEach(comment -> {
-                eventProducer.sendCommentEvent("DELETED", comment.getId(), null, null, null);
-            });
-            
-            // 2. 실제 DB 삭제
+            // 실제 DB 삭제
             commentRepository.deleteByMessageBoard(messageBoard);
             messageBoardRepository.delete(messageBoard);
 
-            // 3. 게시판 삭제 이벤트 발행
-            eventProducer.sendMessageBoardEvent("DELETED", id, null, null, null);
+            // 게시판 삭제 이벤트 발행
+            eventProducer.sendMessageBoardEvent("DELETED", id, null, null, null, null);
             
             return true;
         }
@@ -74,16 +68,10 @@ public class MessageBoardService {
         MessageBoard board = messageBoardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("게시판을 찾을 수 없습니다."));
 
-        // 댓글 삭제 이벤트
-        List<Comment> commentsToDelete = commentRepository.findByMessageBoard(board);
-        commentsToDelete.forEach(comment -> {
-            eventProducer.sendCommentEvent("DELETED", comment.getId(), null, null, null);
-        });
-
         commentRepository.deleteByMessageBoard(board);
         messageBoardRepository.delete(board);
 
         // 관리자 서버에 게시판 삭제 알림 발행
-        eventProducer.sendMessageBoardEvent("DELETED", id, null, null, null);
+        eventProducer.sendMessageBoardEvent("DELETED", id, null, null, null, null);
     }
 }
