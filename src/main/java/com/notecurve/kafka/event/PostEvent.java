@@ -11,7 +11,8 @@ import java.time.LocalDate;
 public class PostEvent {
     private String type;
     private Long postId;
+    private Long userId;
     private String title;
     private String userName;
-    private LocalDate createdAt;
+    private LocalDate date;
 }
