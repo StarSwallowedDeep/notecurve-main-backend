@@ -107,7 +107,6 @@ public class CommentService {
                 .orElseThrow(() -> new RuntimeException("Comment not found"));
 
         commentRepository.delete(comment);
-        
         eventProducer.sendCommentEvent("DELETED", id, null, null, null, null, null);
     }
 }
