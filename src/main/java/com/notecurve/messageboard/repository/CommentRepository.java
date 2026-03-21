@@ -14,4 +14,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByMessageBoard(MessageBoard messageBoard);
     
     boolean existsByMessageBoardAndUser(MessageBoard messageBoard, User user);
+
+    void deleteByUser(User user);
+
+    void deleteByMessageBoard(MessageBoard messageBoard);
 }
