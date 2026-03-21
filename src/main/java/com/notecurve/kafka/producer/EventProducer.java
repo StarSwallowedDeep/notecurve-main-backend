@@ -6,8 +6,10 @@ import com.notecurve.kafka.event.UserEvent;
 import com.notecurve.kafka.event.PostEvent;
 import com.notecurve.kafka.event.CommentEvent;
 import com.notecurve.kafka.event.MessageBoardEvent;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import java.time.LocalDate;
 
 @Slf4j
@@ -32,9 +34,9 @@ public class EventProducer {
         }
     }
 
-    public void sendPostEvent(String type, Long postId, String title, String userName, LocalDate createdAt) {
+    public void sendPostEvent(String type, Long postId, Long userId, String title, String userName, LocalDate date) {
         try {
-            PostEvent event = new PostEvent(type, postId, title, userName, createdAt);
+            PostEvent event = new PostEvent(type, postId, userId, title, userName, date);
             kafkaTemplate.send(POST_TOPIC, event);
             log.info("PostEvent 발행: type={}, title={}", type, title);
         } catch (Exception e) {
@@ -42,9 +44,9 @@ public class EventProducer {
         }
     }
 
-    public void sendCommentEvent(String type, Long commentId, String content, String userName) {
+    public void sendCommentEvent(String type, Long commentId, Long userId, String content, String userName, Long messageBoardId, String messageBoardTitle) {
         try {
-            CommentEvent event = new CommentEvent(type, commentId, content, userName);
+            CommentEvent event = new CommentEvent(type, commentId, userId, content, userName, messageBoardId, messageBoardTitle);
             kafkaTemplate.send(COMMENT_TOPIC, event);
             log.info("CommentEvent 발행: type={}, commentId={}", type, commentId);
         } catch (Exception e) {
@@ -52,9 +54,9 @@ public class EventProducer {
         }
     }
 
-    public void sendMessageBoardEvent(String type, Long boardId, String title, String userName) {
+    public void sendMessageBoardEvent(String type, Long boardId, Long userId, String title, String userName, String createdAt) {
         try {
-            MessageBoardEvent event = new MessageBoardEvent(type, boardId, title, userName);
+            MessageBoardEvent event = new MessageBoardEvent(type, boardId, userId, title, userName, createdAt);
             kafkaTemplate.send(MESSAGE_BOARD_TOPIC, event);
             log.info("MessageBoardEvent 발행: type={}, boardId={}, title={}", type, boardId, title);
         } catch (Exception e) {
