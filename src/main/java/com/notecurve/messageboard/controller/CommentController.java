@@ -1,7 +1,6 @@
 package com.notecurve.messageboard.controller;
 
 import java.util.List;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.notecurve.messageboard.dto.CommentRequest;
 import com.notecurve.messageboard.dto.CommentDTO;
+import com.notecurve.messageboard.dto.AdminCommentDTO;
 import com.notecurve.messageboard.service.CommentService;
 import com.notecurve.auth.security.UserDetailsImpl;
 
@@ -55,6 +55,17 @@ public class CommentController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         commentService.deleteComment(id, userDetails.getUser().getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/internal/all")
+    public ResponseEntity<List<AdminCommentDTO>> getAllCommentsInternal() {
+        return ResponseEntity.ok(commentService.getAllComments());
+    }
+
+    @DeleteMapping("/internal/{id}")
+    public ResponseEntity<Void> forceDeleteComment(@PathVariable Long id) {
+        commentService.adminDeleteComment(id);
         return ResponseEntity.noContent().build();
     }
 }
