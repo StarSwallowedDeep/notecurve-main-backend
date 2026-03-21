@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 public class MessageBoardEvent {
     private String type;
     private Long boardId;
+    private Long userId;
     private String title;
     private String userName;
+    private String createdAt;
 }
