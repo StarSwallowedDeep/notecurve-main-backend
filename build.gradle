@@ -56,6 +56,9 @@ dependencies {
 	// --- Kafka ---
 	implementation 'org.springframework.kafka:spring-kafka'
 
+	// --- 자바 소스 코드 분석 ---
+    implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.10'
+
 	// --- 테스트 ---
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
