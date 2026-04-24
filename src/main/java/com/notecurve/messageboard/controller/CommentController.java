@@ -62,10 +62,4 @@ public class CommentController {
     public ResponseEntity<List<AdminCommentDTO>> getAllCommentsInternal() {
         return ResponseEntity.ok(commentService.getAllComments());
     }
-
-    @DeleteMapping("/internal/{id}")
-    public ResponseEntity<Void> forceDeleteComment(@PathVariable Long id) {
-        commentService.adminDeleteComment(id);
-        return ResponseEntity.noContent().build();
-    }
 }
