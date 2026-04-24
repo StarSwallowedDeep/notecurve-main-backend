@@ -70,8 +70,5 @@ public class MessageBoardService {
 
         commentRepository.deleteByMessageBoard(board);
         messageBoardRepository.delete(board);
-
-        // 관리자 서버에 게시판 삭제 알림 발행
-        eventProducer.sendMessageBoardEvent("DELETED", id, null, null, null, null);
     }
 }
