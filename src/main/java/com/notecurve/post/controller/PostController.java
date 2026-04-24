@@ -74,10 +74,4 @@ public class PostController {
         List<PostResponseDto> posts = postService.getAllPosts();
         return ResponseEntity.ok(posts);
     }
-
-    @DeleteMapping("/internal/{id}")
-    public ResponseEntity<Void> forceDeletePost(@PathVariable Long id) {
-        postService.adminDeletePost(id);
-        return ResponseEntity.noContent().build();
-    }
 }
