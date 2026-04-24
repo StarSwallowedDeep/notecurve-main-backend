@@ -98,12 +98,6 @@ public class MessageBoardController {
         return ResponseEntity.ok(dtos);
     }
 
-    @DeleteMapping("/internal/{id}")
-    public ResponseEntity<Void> forceDeleteBoard(@PathVariable Long id) {
-        messageBoardService.adminDeleteMessageBoard(id);
-        return ResponseEntity.noContent().build();
-    }
-
     private MessageBoardDTO convertToDTO(MessageBoard messageBoard, boolean includeComments, Long userId) {
         return new MessageBoardDTO(
             messageBoard.getId(),
