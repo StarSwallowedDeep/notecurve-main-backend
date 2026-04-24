@@ -143,19 +143,4 @@ public class UserController {
     public ResponseEntity<List<User>> getAllUsersInternal() {
         return ResponseEntity.ok(userService.getAllUsers()); 
     }
-
-    @DeleteMapping("/internal/{id}")
-    public ResponseEntity<Void> forceDeleteUser(@PathVariable Long id) {
-        userService.adminDeleteUser(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PatchMapping("/internal/{id}/role")
-    public ResponseEntity<Void> updateUserRole(
-            @PathVariable Long id, 
-            @RequestParam User.Role role) {
-        
-        userService.updateUserRole(id, role);
-        return ResponseEntity.noContent().build();
-    }
 }
