@@ -17,6 +17,7 @@ import com.notecurve.auth.repository.RefreshTokenRepository;
 import com.notecurve.note.domain.Note;
 import com.notecurve.note.repository.NoteRepository;
 import com.notecurve.notefile.domain.NoteFile;
+import com.notecurve.notefile.repository.NoteFileRepository;
 import com.notecurve.notefile.service.NoteFileService;
 import com.notecurve.category.domain.Category;
 import com.notecurve.category.repository.CategoryRepository;
@@ -42,6 +43,7 @@ public class UserService {
 
     private final NoteRepository noteRepository;
     private final NoteFileService noteFileService;
+    private final NoteFileRepository noteFileRepository;
     private final CategoryRepository categoryRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
@@ -233,6 +235,14 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
         user.setRole(role);
         userRepository.save(user);
+
+        eventProducer.sendUserEvent(
+            "UPDATED",
+            user.getId(),
+            user.getLoginId(),
+            user.getName(),
+            user.getRole().name()
+        );
     }
 
     // 강제 탈퇴 (관리자용)
@@ -254,13 +264,14 @@ public class UserService {
                 }
             }
         }
+        noteFileRepository.deleteByNoteUserId(userId);
 
         // 2. Note 삭제 (NoteFile cascade로 같이 삭제)
-        noteRepository.deleteAll(notes);
+        noteRepository.deleteByUserId(userId);
 
         // 3. Category 삭제
         List<Category> categories = categoryRepository.findByUser(user);
-        categoryRepository.deleteAll(categories);
+        categoryRepository.deleteByUserId(userId);
 
         // 4. Post 삭제 (PostImage cascade로 같이 삭제)
         List<Post> posts = postRepository.findByUser(user);
@@ -275,13 +286,13 @@ public class UserService {
                     .forEach(img -> imageUploadService.deleteFile(img.getContentImageUrl()));
             }
         }
-        postRepository.deleteAll(posts);
+        postRepository.deleteByUserId(userId);
 
         // 5. Comment 삭제
-        commentRepository.deleteByUser(user);
+        commentRepository.deleteByUserId(userId);
 
         // 6. MessageBoard 삭제 (Comment cascade로 같이 삭제)
-        messageBoardRepository.deleteByUser(user);
+        messageBoardRepository.deleteByUserId(userId);
 
         // 7. 프로필 이미지 물리적 파일 삭제
         if (user.getProfileImage() != null) {
@@ -299,7 +310,6 @@ public class UserService {
 
         // 9. User 삭제
         userRepository.delete(user);
-        eventProducer.sendUserEvent("DELETED", userId, null, null, null);
     }
 
     // 로그인 ID로 사용자 찾기
