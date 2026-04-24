@@ -309,7 +309,6 @@ public class PostService {
                 .forEach(img -> filesToDelete.add(img.getContentImageUrl()));
 
         postRepository.delete(post);
-        eventProducer.sendPostEvent("DELETED", postId, null, null, null, null);
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
