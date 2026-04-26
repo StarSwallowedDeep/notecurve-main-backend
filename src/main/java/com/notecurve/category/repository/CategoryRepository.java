@@ -2,6 +2,10 @@ package com.notecurve.category.repository;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +21,9 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     // 카테고리 ID와 사용자가 일치하는 경우, 존재하면 카테고리 반환
     Optional<Category> findByIdAndUser(Long id, User user);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Category c WHERE c.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }
