@@ -5,6 +5,10 @@ import com.notecurve.note.domain.Note;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,4 +28,9 @@ public interface NoteFileRepository extends JpaRepository<NoteFile, Long> {
     Optional<NoteFile> findByStoredNameAndNote_UserId(String storedName, Long userId);
 
     Optional<NoteFile> findByStoredName(String storedName);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM NoteFile nf WHERE nf.note.user.id = :userId")
+    void deleteByNoteUserId(@Param("userId") Long userId);
 }
